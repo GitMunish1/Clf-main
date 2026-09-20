@@ -1,0 +1,4 @@
+x,y,floor,timestamp,steps,heading_deg,distance_m,wifi_aabbccddeeff,wifi_112233445566,ble_beacon_01,ble_beacon_02,split
+2.0,3.0,0,2026-09-20T10:00:00,0,90,0.0,-45,-72,-63,-110,train
+2.8,3.0,0,2026-09-20T10:00:02,1,90,0.8,-48,-69,-61,-88,train
+3.6,3.0,0,2026-09-20T10:00:04,2,90,1.6,-52,-65,-58,-84,test
