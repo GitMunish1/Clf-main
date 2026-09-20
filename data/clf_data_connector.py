@@ -83,10 +83,15 @@ class CLFDataConnector(DatasetConnector):
         # Optional explicit split column prevents leakage between collection walks.
         if "split" in data.columns:
             split = data["split"].astype(str).str.lower().to_numpy()
+            train_idx = np.where(train_mask := (split == "train"))[0]
+            val_idx = np.where(split == "val")[0]
+            test_idx = np.where(split == "test")[0]
+            # BaseDataProvider can create validation data from train when no
+            # explicit val rows are supplied. When val rows exist, keep them.
             self.split_indices = [{
-                "train": np.where(split == "train")[0],
-                "val": np.where(split == "val")[0],
-                "test": np.where(split == "test")[0],
+                "train": train_idx,
+                "val": val_idx,
+                "test": test_idx,
             }]
         return self
 
