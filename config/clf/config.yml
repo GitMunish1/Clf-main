@@ -1,0 +1,44 @@
+seed: [1234]
+
+data:
+  dataset: clf
+  params:
+    csv_path: datasets/clf/fingerprints.csv
+    val: 0.15
+    grid_size: 3
+    padding_ratio: 0.3
+    scaling: clf
+    class_pad: true
+    reg_pad: true
+    weighted_grid_labels: false
+    # Fusion input = Wi-Fi RSSI + BLE RSSI + pedestrian motion.
+    motion_features: [steps, heading_sin, heading_cos, distance_m]
+
+models:
+  - name: CLF-mCEL-Fusion
+    type: mCEL
+    backbone:
+      type: MLP
+      layers: [512, 256, 256]
+      dropout: 0.35
+      activation: relu
+    head:
+      classification:
+        type: MLP
+        layers: [256]
+        dropout: 0.20
+        activation: relu
+      regression:
+        type: MLP
+        layers: [256]
+        dropout: 0.20
+        activation: relu
+    params:
+      epochs: 100
+      batch_size: 64
+      lr: 0.0005
+      verbose: 1
+
+dir:
+  base: exp/clf/mCEL-fusion/
+  result_file: metrics.pickle
