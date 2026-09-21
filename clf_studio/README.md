@@ -1,0 +1,3 @@
+# CLF Training Studio
+
+Standalone Streamlit research UI for training and testing a PyTorch Wi-Fi/BLE overlapping-cell localization model. The full downloadable standalone ZIP is produced separately. This branch does not change the original TensorFlow pipeline. To run locally: `python -m pip install -r clf_studio/requirements.txt` and `python -m streamlit run clf_studio/app.py`. Export processed JSONL from CLF Surveyor; summary CSV is insufficient for radio fingerprint training. Use independent stationary surveys with calibrated metric coordinates. Motion/PDR, Android scanning and original TensorFlow integration are not included in this research prototype.
