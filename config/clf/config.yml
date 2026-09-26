@@ -12,6 +12,18 @@ data:
     weighted_grid_labels: false
     missing_rssi: -110.0
 
+    # Numerical safety for Multi-CEL target weighting.
+    label_weight_epsilon: 0.000001
+
+    # CLF live decoder: blend only nearby, plausible cell candidates.
+    decoder_top_k: 3
+    decoder_secondary_ratio: 0.35
+    decoder_neighbor_radius_cells: 1.5
+
+    # Initial live confidence gates. Tune after validation/calibration.
+    decoder_min_confidence: 0.45
+    decoder_min_margin: 0.08
+
     # Any CSV column beginning with imu_ is automatically appended
     # to the motion encoder input.
     motion_features: [steps, step_delta, heading_sin, heading_cos, distance_m]
