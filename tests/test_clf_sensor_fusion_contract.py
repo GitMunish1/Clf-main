@@ -30,6 +30,23 @@ class CLFSensorFusionContractTest(unittest.TestCase):
             })
         return pd.DataFrame(rows)
 
+    def _provider(self, path):
+        conn = CLFDataConnector(csv_path=path)
+        return CLFSensorFusionDataProvider(
+            {
+                'val': 0.2,
+                'grid_size': 3,
+                'padding_ratio': 0.3,
+                'label_weight_epsilon': 1e-6,
+                'decoder_top_k': 3,
+                'decoder_secondary_ratio': 0.35,
+                'decoder_neighbor_radius_cells': 1.5,
+                'decoder_min_confidence': 0.45,
+                'decoder_min_margin': 0.08,
+            },
+            conn,
+        )
+
     def test_named_inputs_and_heading_encoding(self):
         with tempfile.NamedTemporaryFile(
             suffix='.csv', delete=False
@@ -38,15 +55,7 @@ class CLFSensorFusionContractTest(unittest.TestCase):
 
         try:
             self._dataset().to_csv(path, index=False)
-            conn = CLFDataConnector(csv_path=path)
-            dp = CLFSensorFusionDataProvider(
-                {
-                    'val': 0.2,
-                    'grid_size': 3,
-                    'padding_ratio': 0.3
-                },
-                conn
-            )
+            dp = self._provider(path)
             dp = (
                 dp.load_dataset()
                 .generate_split_indices()
@@ -72,6 +81,80 @@ class CLFSensorFusionContractTest(unittest.TestCase):
             self.assertTrue(
                 np.all(dp.x['wifi_input'] <= 1.0)
             )
+        finally:
+            os.unlink(path)
+
+    def test_grid_origin_does_not_create_nan_targets(self):
+        with tempfile.NamedTemporaryFile(
+            suffix='.csv', delete=False
+        ) as f:
+            path = f.name
+
+        try:
+            # First sample is exactly at (0, 0), the old 1/distance path
+            # could divide by zero for this case.
+            self._dataset().to_csv(path, index=False)
+            dp = self._provider(path)
+            dp = (
+                dp.load_dataset()
+                .generate_split_indices()
+                .generate_validation_indices()
+                .build_sensor_inputs()
+                .transform_to_grid_encoding()
+                .compute_multilabel_aug_data(
+                    weighted_grid_labels=False
+                )
+            )
+
+            self.assertTrue(
+                np.isfinite(dp.multi_grid_cell_labels).all()
+            )
+            self.assertTrue(
+                np.isfinite(dp.multi_labels).all()
+            )
+            class_sums = np.sum(
+                dp.multi_grid_cell_labels, axis=1
+            )
+            self.assertTrue(
+                np.allclose(class_sums, 1.0)
+            )
+        finally:
+            os.unlink(path)
+
+    def test_low_confidence_prediction_is_rejected(self):
+        with tempfile.NamedTemporaryFile(
+            suffix='.csv', delete=False
+        ) as f:
+            path = f.name
+
+        try:
+            self._dataset().to_csv(path, index=False)
+            dp = self._provider(path)
+            dp = (
+                dp.load_dataset()
+                .generate_split_indices()
+                .generate_validation_indices()
+                .build_sensor_inputs()
+                .transform_to_grid_encoding()
+            )
+
+            num_cells = int(dp.get_num_grid_cells())
+            uncertain = np.full(
+                (1, num_cells), 1.0 / num_cells
+            )
+            status = dp.get_prediction_confidence(
+                uncertain
+            )
+            self.assertFalse(bool(status['accepted'][0]))
+
+            confident = np.zeros((1, num_cells))
+            confident[0, 0] = 0.9
+            if num_cells > 1:
+                confident[0, 1] = 0.1
+            status = dp.get_prediction_confidence(
+                confident
+            )
+            self.assertTrue(bool(status['accepted'][0]))
         finally:
             os.unlink(path)
 
