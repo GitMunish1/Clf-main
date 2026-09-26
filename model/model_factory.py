@@ -8,12 +8,18 @@ def get_model(model_params, base_dir, dp):
     m_type = model_params['type']
     model_name = model_params['name']
 
-    if m_type == 'mCEL':
-        model = MCELmodel(m_params, dp, base_dir, model_name=model_name)
+    if m_type in ('mCEL', 'mCEL_sensor_fusion'):
+        model = MCELmodel(
+            m_params, dp, base_dir, model_name=model_name
+        )
     elif m_type == '3D':
-        model = RegModel(m_params, dp, base_dir, model_name=model_name)
+        model = RegModel(
+            m_params, dp, base_dir, model_name=model_name
+        )
     else:
-        model = None
+        raise ValueError(
+            'Unsupported model type: {}'.format(m_type)
+        )
 
     model.setup_model(model_params)
 
