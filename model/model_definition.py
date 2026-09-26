@@ -1,74 +1,120 @@
 import tensorflow as tf
 
 
+def _apply_mlp(x, conf, prefix):
+    if conf is None:
+        return x
+    for idx, units in enumerate(conf.get('layers', [])):
+        x = tf.keras.layers.Dense(
+            units, name='{}_dense_{}'.format(prefix, idx)
+        )(x)
+        x = tf.keras.layers.Activation(
+            conf.get('activation', 'relu'),
+            name='{}_act_{}'.format(prefix, idx)
+        )(x)
+        if 'dropout' in conf and conf['dropout']:
+            x = tf.keras.layers.Dropout(
+                conf['dropout'],
+                name='{}_dropout_{}'.format(prefix, idx)
+            )(x)
+    return x
+
+
+def _build_mcel_heads(head, h_conf, output_dim):
+    class_conf = h_conf['classification']
+    c_head = _apply_mlp(head, class_conf, 'class')
+    c_output = tf.keras.layers.Dense(
+        output_dim[0], name='class_logits'
+    )(c_head)
+    c_output = tf.keras.layers.Activation(
+        'softmax', name='output_class'
+    )(c_output)
+
+    reg_conf = h_conf['regression']
+    r_head = _apply_mlp(head, reg_conf, 'reg')
+    r_output = tf.keras.layers.Dense(
+        output_dim[1], name='reg_values'
+    )(r_head)
+    r_output = tf.keras.layers.Activation(
+        'tanh', name='output_reg'
+    )(r_output)
+    return [c_output, r_output]
+
+
+def _build_sensor_fusion_backbone(conf, input_dim):
+    if not isinstance(input_dim, dict):
+        raise ValueError(
+            'mCEL_sensor_fusion requires named input dimensions'
+        )
+
+    encoders = conf.get('encoders', {})
+    inputs = {}
+    encoded = []
+
+    for modality in ('wifi', 'ble', 'motion'):
+        input_name = '{}_input'.format(modality)
+        if input_name not in input_dim:
+            raise ValueError(
+                'Missing sensor-fusion input: {}'.format(input_name)
+            )
+
+        inp = tf.keras.layers.Input(
+            shape=(input_dim[input_name],),
+            name=input_name
+        )
+        inputs[input_name] = inp
+        encoded.append(
+            _apply_mlp(
+                inp,
+                encoders.get(modality),
+                '{}_encoder'.format(modality)
+            )
+        )
+
+    fused = tf.keras.layers.Concatenate(
+        name='sensor_fusion_concat'
+    )(encoded)
+
+    if conf.get('fusion_layer_norm', True):
+        fused = tf.keras.layers.LayerNormalization(
+            name='sensor_fusion_norm'
+        )(fused)
+
+    fused = _apply_mlp(
+        fused,
+        conf.get('fusion', conf.get('backbone')),
+        'fusion'
+    )
+    return inputs, fused
+
+
 def get_model_from_yaml_definition(conf, input_dim, output_dim):
+    model_type = conf['type']
 
-    input = tf.keras.layers.Input(shape=input_dim, name='input')
-    bb = input
+    if model_type == 'mCEL_sensor_fusion':
+        inputs, head = _build_sensor_fusion_backbone(conf, input_dim)
+        outputs = _build_mcel_heads(head, conf['head'], output_dim)
+        return tf.keras.models.Model(
+            inputs=inputs,
+            outputs=outputs,
+            name='clf_mcel_sensor_fusion'
+        )
 
-    # generate input based on backbone type
+    input_layer = tf.keras.layers.Input(shape=input_dim, name='input')
+    bb = input_layer
     bb_conf = conf['backbone']
-    if bb_conf is not None:
-        bb_type = bb_conf['type']
 
-        if bb_type == "MLP":
-            for l in bb_conf['layers']:
-                bb = tf.keras.layers.Dense(l, activation=bb_conf['activation'])(bb)
+    if bb_conf is not None and bb_conf['type'] == 'MLP':
+        bb = _apply_mlp(bb, bb_conf, 'backbone')
 
-                if 'dropout' in bb_conf:
-                    bb = tf.keras.layers.Dropout(bb_conf['dropout'])(bb)
+    if model_type == 'mCEL':
+        outputs = _build_mcel_heads(bb, conf['head'], output_dim)
+        return tf.keras.models.Model(input_layer, outputs)
 
-    # generate HEAD based on model type
-    head = bb
-    h_conf = conf['head']
-
-    if conf['type'] == 'mCEL':
-        # two output branches
-        # (one for grid cell classification, one for regression)
-
-        # classification head
-        class_conf = h_conf['classification']
-
-        c_head = head
-        for l in class_conf['layers']:
-            c_head = tf.keras.layers.Dense(l)(c_head)
-            c_head = tf.keras.layers.Activation(class_conf['activation'])(c_head)
-
-            if 'dropout' in class_conf:
-                c_head = tf.keras.layers.Dropout(class_conf['dropout'])(c_head)
-
-        c_output = tf.keras.layers.Dense(output_dim[0])(c_head)
-        c_output = tf.keras.layers.Activation('softmax', name="output_class")(
-            c_output)
-
-        # regression head
-        reg_conf = h_conf['regression']
-        r_head = head
-        for l in reg_conf['layers']:
-            r_head = tf.keras.layers.Dense(l)(r_head)
-            r_head = tf.keras.layers.Activation(reg_conf['activation'])(r_head)
-            if 'dropout' in reg_conf:
-                r_head = tf.keras.layers.Dropout(reg_conf['dropout'])(r_head)
-
-        r_output = tf.keras.layers.Dense(output_dim[1])(r_head)
-        r_output = tf.keras.layers.Activation('tanh', name="output_reg")(r_output)
-
-        model = tf.keras.models.Model(input, [c_output, r_output])
-
-    elif conf['type'] == '3D' or conf['type'] == '2D':
-        # 3D regression model
-
-        # regression head
-        for l in h_conf['layers']:
-            head = tf.keras.layers.Dense(l)(head)
-            head = tf.keras.layers.Activation(activation=h_conf['activation'])(head)
-
-            if 'dropout' in h_conf:
-                head = tf.keras.layers.Dropout(h_conf['dropout'])(head)
-
+    if model_type == '3D' or model_type == '2D':
+        head = _apply_mlp(bb, conf['head'], 'regression')
         output = tf.keras.layers.Dense(output_dim)(head)
         output = tf.keras.layers.Activation('linear')(output)
+        return tf.keras.models.Model(input_layer, output)
 
-        model = tf.keras.models.Model(input, output)
-
-    return model
+    raise ValueError('Unsupported model type: {}'.format(model_type))
