@@ -1,3 +1,5 @@
+import math
+
 from data.gia_vslam_data_connector import GiaVSLAMdataConnector
 from data.mcel_data_provider import MCELdataProvider
 from data.clf_sensor_fusion_data_provider import CLFSensorFusionDataProvider
@@ -6,6 +8,31 @@ from data.tampere_data_connector import TampereDataConnector
 from data.uji_data_connector import UJIdataConnector
 from data.uts_data_connector import UTSdataConnector
 from data.clf_data_connector import CLFDataConnector
+
+
+def _validate_clf_grid_scale(dp, d_params):
+    """Fail early when map units would create an impractical Multi-CEL head."""
+    grid_size = float(d_params.get('grid_size', 3))
+    if grid_size <= 0:
+        raise ValueError('grid_size must be positive')
+
+    max_grid_cells = int(d_params.get('max_grid_cells', 5000))
+    total_cells = 0
+    for width, height in zip(
+        dp.floorplan_width, dp.floorplan_height
+    ):
+        rows = int(math.ceil(float(height) / grid_size) + 1)
+        cols = int(math.ceil(float(width) / grid_size) + 1)
+        total_cells += rows * cols
+
+    if total_cells > max_grid_cells:
+        raise ValueError(
+            'CLF grid would create {} cells (limit {}). '
+            'The x/y coordinates are probably still raw GeoJSON/map units. '
+            'Calibrate/convert coordinates to local metres before training, '
+            'or choose a grid_size expressed in the same calibrated units.'
+            .format(total_cells, max_grid_cells)
+        )
 
 
 def get_data_provider(dataset_params, m_type):
@@ -57,6 +84,9 @@ def get_data_provider(dataset_params, m_type):
             .generate_split_indices()
             .generate_validation_indices()
         )
+
+        if dataset == 'clf':
+            _validate_clf_grid_scale(dp, d_params)
 
         if dataset != 'clf':
             dp = dp.replace_missing_values()
