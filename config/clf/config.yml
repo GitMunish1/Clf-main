@@ -12,6 +12,10 @@ data:
     weighted_grid_labels: false
     missing_rssi: -110.0
 
+    # Refuse an accidentally huge classification/regression head.
+    # Surveyor x/y should be converted to calibrated local metres.
+    max_grid_cells: 5000
+
     # Numerical safety for Multi-CEL target weighting.
     label_weight_epsilon: 0.000001
 
@@ -37,14 +41,22 @@ models:
         layers: [256, 128]
         dropout: 0.25
         activation: relu
+        input_noise: 0.018
+        input_dropout: 0.05
+        modality_dropout: 0.10
       ble:
         layers: [128, 64]
         dropout: 0.20
         activation: relu
+        input_noise: 0.018
+        input_dropout: 0.07
+        modality_dropout: 0.15
       motion:
         layers: [64, 64]
         dropout: 0.15
         activation: relu
+        input_noise: 0.025
+        modality_dropout: 0.10
 
     fusion_layer_norm: true
     fusion:
