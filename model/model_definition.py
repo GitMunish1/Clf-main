@@ -20,6 +20,48 @@ def _apply_mlp(x, conf, prefix):
     return x
 
 
+def _apply_sensor_augmentation(x, conf, prefix):
+    """Training-only noise/dropout for real phone sensor gaps."""
+    if conf is None:
+        return x
+
+    noise = float(conf.get('input_noise', 0.0) or 0.0)
+    if noise > 0.0:
+        x = tf.keras.layers.GaussianNoise(
+            noise, name='{}_input_noise'.format(prefix)
+        )(x)
+
+    input_dropout = float(
+        conf.get('input_dropout', 0.0) or 0.0
+    )
+    if input_dropout > 0.0:
+        x = tf.keras.layers.Dropout(
+            input_dropout,
+            name='{}_input_dropout'.format(prefix)
+        )(x)
+
+    return x
+
+
+def _apply_modality_dropout(x, conf, prefix):
+    """Randomly remove an entire modality during training.
+
+    One dropout mask is sampled per example and broadcast over the encoded
+    feature dimension. This teaches fusion to survive temporary Wi-Fi/BLE/
+    motion loss instead of assuming every sensor is always available.
+    """
+    if conf is None:
+        return x
+    rate = float(conf.get('modality_dropout', 0.0) or 0.0)
+    if rate <= 0.0:
+        return x
+    return tf.keras.layers.Dropout(
+        rate,
+        noise_shape=(None, 1),
+        name='{}_modality_dropout'.format(prefix),
+    )(x)
+
+
 def _build_mcel_heads(head, h_conf, output_dim):
     class_conf = h_conf['classification']
     c_head = _apply_mlp(head, class_conf, 'class')
@@ -58,18 +100,27 @@ def _build_sensor_fusion_backbone(conf, input_dim):
                 'Missing sensor-fusion input: {}'.format(input_name)
             )
 
+        encoder_conf = encoders.get(modality) or {}
         inp = tf.keras.layers.Input(
             shape=(input_dim[input_name],),
             name=input_name
         )
         inputs[input_name] = inp
-        encoded.append(
-            _apply_mlp(
-                inp,
-                encoders.get(modality),
-                '{}_encoder'.format(modality)
-            )
+
+        augmented = _apply_sensor_augmentation(
+            inp, encoder_conf, '{}_encoder'.format(modality)
         )
+        modality_features = _apply_mlp(
+            augmented,
+            encoder_conf,
+            '{}_encoder'.format(modality)
+        )
+        modality_features = _apply_modality_dropout(
+            modality_features,
+            encoder_conf,
+            '{}_encoder'.format(modality)
+        )
+        encoded.append(modality_features)
 
     fused = tf.keras.layers.Concatenate(
         name='sensor_fusion_concat'
