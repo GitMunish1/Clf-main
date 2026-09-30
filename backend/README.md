@@ -6,8 +6,13 @@ model status, and GeoJSON map matching.
 
 ## Runtime flow
 
-Flutter -> sensor JSON -> validate -> queue raw storage -> build Wi-Fi/BLE/motion tensors ->
-CLF model runtime -> map match -> response.
+Flutter -> sensor JSON (+ optional ordered route nodes) -> validate -> queue raw storage ->
+build Wi-Fi/BLE/motion tensors -> CLF model runtime -> optional map match ->
+match predicted position to the supplied route nodes -> response.
+
+For the POC, the backend does **not** run A* or calculate a route. Flutter owns the map,
+destination lookup and ordered node sequence. The location engine only predicts the user's
+position and reports progress on that supplied sequence.
 
 The existing research/training code is not replaced.
 
@@ -59,7 +64,18 @@ API docs: http://SERVER_IP:8000/docs
         "linear_acceleration": {"x": 0.02, "y": 0.01, "z": 0.06}
       },
       "steps": {"total": 1240, "delta": 1},
-      "heading_deg": 92.4
+      "heading_deg": 92.4,
+      "route": {
+        "destination_node_id": "ROOM_204",
+        "current_index_hint": 0,
+        "arrival_radius": 2.0,
+        "nodes": [
+          {"node_id": "N12", "floor": 1, "x": 12.4, "y": 8.1},
+          {"node_id": "N13", "floor": 1, "x": 18.2, "y": 8.1},
+          {"node_id": "N17", "floor": 1, "x": 24.0, "y": 10.5},
+          {"node_id": "ROOM_204", "floor": 1, "x": 29.1, "y": 12.0}
+        ]
+      }
     }
 
 BLE is optional. Wi-Fi + motion-only packets are accepted.
@@ -85,3 +101,31 @@ The response can then contain floor, cell_id, x, y, confidence and map_matched.
 
     cd backend
     PYTHONPATH=. pytest -q tests/test_server.py
+
+
+## POC navigation contract
+
+The app already contains the floor map, POIs and node coordinates. When a user chooses a
+destination, Flutter supplies the ordered route nodes. The server does not search the graph.
+
+Example:
+
+    N12 -> N13 -> N17 -> N21 -> ROOM_204
+
+After localization, the server compares the predicted floor/X/Y with only those supplied nodes
+and can return:
+
+    {
+      "route_progress": {
+        "destination_node_id": "ROOM_204",
+        "current_node_id": "N17",
+        "next_node_id": "N21",
+        "current_index": 2,
+        "total_nodes": 5,
+        "distance_to_current_node": 1.1,
+        "reached_destination": false
+      }
+    }
+
+This is route-progress tracking, not A* pathfinding. The node coordinates sent by Flutter must
+use the same floor coordinate system as the localization model/GeoJSON.
