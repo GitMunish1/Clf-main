@@ -1,0 +1,10 @@
+{
+  "wifi": {
+    "aa:bb:cc:dd:ee:01": 0,
+    "aa:bb:cc:dd:ee:02": 1
+  },
+  "ble": {
+    "beacon-ground-01": 0,
+    "beacon-first-01": 1
+  }
+}
