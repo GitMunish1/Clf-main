@@ -1,0 +1,22 @@
+name: CLF Backend Tests
+
+on:
+  push:
+    branches:
+      - feature/clf-runtime-backend
+  pull_request:
+    paths:
+      - "backend/**"
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r backend/requirements.txt
+      - run: |
+          cd backend
+          PYTHONPATH=. pytest -q tests/test_server.py
