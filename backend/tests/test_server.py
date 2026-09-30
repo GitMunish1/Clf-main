@@ -5,7 +5,7 @@ os.environ["CLF_DATABASE_PATH"] = "/tmp/clf-test-runtime.db"
 os.environ["CLF_MODEL_PATH"] = "/tmp/no-trained-clf-model.keras"
 
 from fastapi.testclient import TestClient
-from server import SensorPacket, SensorPreprocessor, app
+from server import LocationEstimate, SensorPacket, SensorPreprocessor, app, track_route
 
 
 def test_fixed_feature_shapes():
@@ -44,3 +44,28 @@ def test_end_to_end_untrained_backend():
         stored = client.get(f"/api/v1/debug/packets/{body['packet_id']}")
         assert stored.status_code == 200
         assert stored.json()["feature_version"] == "clf-features-v1"
+
+
+
+def test_app_supplied_route_progress_without_pathfinding():
+    packet = SensorPacket.model_validate({
+        "session_id": str(uuid4()),
+        "device_id": "phone",
+        "timestamp_ms": 1790780000000,
+        "route": {
+            "destination_node_id": "ROOM_204",
+            "nodes": [
+                {"node_id": "N12", "floor": 1, "x": 0.0, "y": 0.0},
+                {"node_id": "N13", "floor": 1, "x": 5.0, "y": 0.0},
+                {"node_id": "ROOM_204", "floor": 1, "x": 10.0, "y": 0.0}
+            ]
+        }
+    })
+    progress = track_route(
+        packet.route,
+        LocationEstimate(floor=1, x=5.4, y=0.2, confidence=0.9)
+    )
+    assert progress is not None
+    assert progress.current_node_id == "N13"
+    assert progress.next_node_id == "ROOM_204"
+    assert progress.current_index == 1
