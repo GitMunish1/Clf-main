@@ -74,6 +74,21 @@ class StepSample(BaseModel):
     delta: int = Field(default=0, ge=0, le=1000)
 
 
+class RouteNode(BaseModel):
+    node_id: str = Field(min_length=1, max_length=128)
+    floor: int
+    x: float
+    y: float
+    label: str | None = Field(default=None, max_length=160)
+
+
+class RouteContext(BaseModel):
+    destination_node_id: str = Field(min_length=1, max_length=128)
+    nodes: list[RouteNode] = Field(min_length=1, max_length=512)
+    current_index_hint: int | None = Field(default=None, ge=0)
+    arrival_radius: float = Field(default=2.0, gt=0, le=20)
+
+
 class SensorPacket(BaseModel):
     model_config = ConfigDict(extra="ignore")
     schema_version: str = "1.0"
@@ -86,6 +101,7 @@ class SensorPacket(BaseModel):
     motion: MotionSample | None = None
     steps: StepSample | None = None
     heading_deg: float | None = None
+    route: RouteContext | None = None
 
     @field_validator("heading_deg")
     @classmethod
@@ -116,12 +132,23 @@ class LocationEstimate(BaseModel):
     map_matched: bool = False
 
 
+class RouteProgress(BaseModel):
+    destination_node_id: str
+    current_node_id: str | None = None
+    next_node_id: str | None = None
+    current_index: int | None = None
+    total_nodes: int
+    distance_to_current_node: float | None = None
+    reached_destination: bool = False
+
+
 class LocalizeResponse(BaseModel):
     packet_id: UUID
     session_id: UUID
     accepted: bool = True
     model: ModelStatus
     location: LocationEstimate | None = None
+    route_progress: RouteProgress | None = None
     inference_ms: float
     feature_version: str = FEATURE_VERSION
     warnings: list[str] = Field(default_factory=list)
@@ -417,6 +444,42 @@ class MapMatcher:
         return float(snap.x), float(snap.y), True, fid
 
 
+def track_route(route: RouteContext | None, location: LocationEstimate | None) -> RouteProgress | None:
+    """Track progress only on the ordered nodes supplied by Flutter. No pathfinding is performed."""
+    if route is None or location is None or location.floor is None or location.x is None or location.y is None:
+        return None
+
+    start = max(0, (route.current_index_hint or 0) - 1)
+    candidates: list[tuple[int, RouteNode]] = [
+        (idx, node)
+        for idx, node in enumerate(route.nodes[start:], start=start)
+        if node.floor == location.floor
+    ]
+    if not candidates:
+        return RouteProgress(
+            destination_node_id=route.destination_node_id,
+            total_nodes=len(route.nodes),
+        )
+
+    def distance(item: tuple[int, RouteNode]) -> float:
+        _, node = item
+        return math.hypot(location.x - node.x, location.y - node.y)
+
+    idx, node = min(candidates, key=distance)
+    dist = distance((idx, node))
+    next_node = route.nodes[idx + 1] if idx + 1 < len(route.nodes) else None
+    reached = node.node_id == route.destination_node_id and dist <= route.arrival_radius
+    return RouteProgress(
+        destination_node_id=route.destination_node_id,
+        current_node_id=node.node_id,
+        next_node_id=None if reached or next_node is None else next_node.node_id,
+        current_index=idx,
+        total_nodes=len(route.nodes),
+        distance_to_current_node=round(dist, 3),
+        reached_destination=reached,
+    )
+
+
 def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -490,6 +553,10 @@ async def process_packet(request: Request, packet: SensorPacket) -> LocalizeResp
     else:
         warnings.append("Model is not trained/loaded yet; data was received, tensorized and stored, but random location output was suppressed.")
 
+    route_progress = track_route(packet.route, location)
+    if route_progress is not None:
+        meta["route_progress"] = route_progress.model_dump()
+
     await db.enqueue("prediction", {"packet_id": str(packet.packet_id), "model_version": request.app.state.model.version,
         "model_state": request.app.state.model.state, "floor": location.floor if location else None,
         "cell_id": location.cell_id if location else None, "x": location.x if location else None,
@@ -498,6 +565,7 @@ async def process_packet(request: Request, packet: SensorPacket) -> LocalizeResp
         "metadata_json": json.dumps(meta, separators=(",", ":")), "created_at": received})
     return LocalizeResponse(packet_id=packet.packet_id, session_id=packet.session_id,
                             model=request.app.state.model.status(), location=location,
+                            route_progress=route_progress,
                             inference_ms=round(pred.inference_ms, 3), warnings=warnings,
                             debug=pred.debug if EXPOSE_UNTRAINED_LOGITS else None)
 
