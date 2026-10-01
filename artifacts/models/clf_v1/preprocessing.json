@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "feature_version": "clf-features-v2",
+  "motion": {
+    "method": "zscore",
+    "fit_on": "training_split_only",
+    "fitted": false,
+    "mean": [],
+    "scale": [],
+    "passthrough_indices": [17, 18]
+  },
+  "status": "template_waiting_for_real_training_data"
+}

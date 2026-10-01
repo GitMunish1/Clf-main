@@ -1,81 +1,80 @@
-# CLF Multi-CEL sensor-fusion extension
+# CLF V1 Multi-CEL localization
 
-This branch adapts the original Wi-Fi Multi-CEL indoor-localization model for CLF while preserving the core grid-cell classification + within-cell regression design.
-
-## Architecture
-
-```text
-Wi-Fi RSSI -> Wi-Fi encoder ---\
-BLE RSSI   -> BLE encoder ------> sensor fusion -> Multi-CEL classification -> cell/floor
-Motion     -> Motion encoder ---/              \-> Multi-CEL regression     -> X/Y
-```
-
-The motion input can contain steps, step delta, heading, walked distance and flattened IMU features. Heading is converted to sine/cosine so 359 degrees remains close to 0 degrees.
-
-The new model type is `mCEL_sensor_fusion`. Original `mCEL` remains available for the public Wi-Fi-only datasets.
-
-## Training CSV
-
-Each row is one labelled observation/window. Required columns:
-
-`x,y,floor`
-
-Radio columns:
-
-- `wifi_<stable-bssid-or-id>`
-- `ble_<stable-beacon-id>`
-
-Motion columns may include:
-
-- `steps`
-- `step_delta`
-- `heading_deg`
-- `distance_m`
-- any `imu_*` columns such as `imu_accel_mean_x` or `imu_gyro_std_z`
-
-Missing RSSI is represented as `-110` dBm. Missing motion values default to zero.
-
-An optional `split` column with `train`, `val`, and `test` is strongly recommended. Complete survey walks/sessions should stay inside one split to avoid leakage.
-
-## Training
-
-Place the exported CLF dataset at:
-
-`datasets/clf/fingerprints.csv`
-
-Run:
-
-`python pipeline.py -c config/clf/config.yml`
-
-The pipeline performs:
-
-1. Wi-Fi encoding
-2. BLE encoding
-3. motion/IMU encoding
-4. sensor fusion
-5. Multi-CEL grid-cell classification
-6. within-grid-cell X/Y regression
-7. floor derivation from the predicted grid cell
-
-## Production backend input
-
-The backend must create the same ordered inputs used during training:
+CLF V1 preserves the original Multi-CEL grid-cell classification plus
+within-cell X/Y regression design. The CLF production model has exactly two
+named inputs:
 
 ```text
-wifi_input   = stable Wi-Fi RSSI vector
-ble_input    = stable BLE RSSI vector
-motion_input = [steps, step_delta, sin(heading), cos(heading), distance, imu...]
+13 whitelisted Wi-Fi RSSI features -> Dense 256 -> Dense 128 --\
+                                                               -> LayerNorm -> Dense 256 -> Dense 256
+19 motion features              -> Dense 64  -> Dense 64  ----/                   |-> cell classification
+                                                                                  \-> within-cell X/Y regression
 ```
 
-The model should be loaded once when the backend starts. Live location packets should only run preprocessing + inference; they should never retrain or reload the model.
+Floor is derived from the predicted global grid cell. There is no separate
+floor network. BLE is intentionally disabled for V1 and no dummy BLE tensor is
+accepted. The original public-dataset `mCEL` model remains available.
 
-## Evaluation
+## Feature contract
 
-Use the same held-out survey walks for these ablations:
+`artifacts/contracts/feature_contract.json` is the machine-readable source of
+truth (`clf-features-v2`). Wi-Fi order is fixed by normalized BSSID, never AP
+name or scan strength. Unknown APs are ignored; duplicate observations retain
+the strongest RSSI; missing approved APs use `-110 dBm`.
 
-1. Wi-Fi only
-2. Wi-Fi + BLE
-3. Wi-Fi + BLE + steps/heading
-4. Wi-Fi + BLE + steps/heading + IMU
+```text
+clipped = clip(rssi, -110, -20)
+wifi_input = (clipped + 110) / 90
+```
 
-Report floor accuracy, grid-cell accuracy, mean/median position error, P95 error and inference latency. Do not claim a fusion accuracy improvement until held-out results confirm it.
+The motion input is always:
+
+```text
+accel x/y/z/magnitude,
+gyro x/y/z/magnitude,
+linear acceleration x/y/z/magnitude,
+magnetometer x/y/z/magnitude,
+step delta,
+heading sin/cos
+```
+
+Magnitudes are `sqrt(x²+y²+z²)`. Heading uses
+`radians(heading_deg % 360)`. A missing magnetometer becomes four zeros.
+Motion indexes 0–16 use z-score parameters fitted only on the training-session
+split; heading sine/cosine pass through. The exported `preprocessing.json` is
+reused unchanged by the backend. No live per-packet fitting is allowed.
+
+## Real training data
+
+Each Collector row/window must include `node_id`, `floor`, calibrated `x_m` and
+`y_m`, the 13 fixed Wi-Fi columns, the raw motion fields, `session_id`, a
+timestamp/window identifier, and either an explicit `split` or enough sessions
+for deterministic 70/15/15 session splitting. One session can never span
+partitions.
+
+`datasets/clf/fingerprints.example.csv` is documentation/test data only. The
+connector explicitly refuses to train on that filename. Synthetic RSSI is used
+only in software-contract tests.
+
+Training cannot begin until all three conditions are met:
+
+1. Real node-labelled survey fingerprints exist.
+2. `coordinate_calibration.json` confirms measured local-metre coordinates.
+3. Train/validation/test survey sessions are defined.
+
+The checked-in calibration, preprocessing, grid, and model metadata files are
+templates marked not ready. No physical scale, fingerprint, model, coordinate,
+or accuracy has been fabricated.
+
+## Export and evaluation
+
+`clf_export.export_model_package` writes a complete `artifacts/models/clf_v1`
+package and rejects uncalibrated or incompatible inputs. It exports the Keras
+model, feature contract, AP registry, training-only scaler, generated grid
+cells, calibration, and versioned model metadata.
+
+`clf_evaluation.py` reports floor accuracy, grid-cell accuracy, mean/median/P95
+position error, confidence acceptance and rejection rates, and inference
+latency on held-out sessions. It supports comparable Wi-Fi-only (zeroed motion)
+and Wi-Fi+motion evaluation. Any claim that motion improves localization must
+come from held-out real survey sessions.

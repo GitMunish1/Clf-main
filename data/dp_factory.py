@@ -58,11 +58,19 @@ def get_data_provider(dataset_params, m_type):
     elif dataset == 'clf':
         conn = CLFDataConnector(
             csv_path=d_params.get('csv_path', 'datasets/clf/fingerprints.csv'),
-            wifi_prefix=d_params.get('wifi_prefix', 'wifi_'),
-            ble_prefix=d_params.get('ble_prefix', 'ble_'),
-            imu_prefix=d_params.get('imu_prefix', 'imu_'),
-            motion_features=d_params.get('motion_features'),
+            feature_contract_path=d_params.get(
+                'feature_contract_path',
+                'artifacts/contracts/feature_contract.json',
+            ),
+            coordinate_calibration_path=d_params.get(
+                'coordinate_calibration_path',
+                'artifacts/models/clf_v1/coordinate_calibration.json',
+            ),
             missing_rssi=d_params.get('missing_rssi', -110.0),
+            require_calibrated_coordinates=d_params.get(
+                'require_calibrated_coordinates', True
+            ),
+            split_seed=d_params.get('split_seed', 1234),
         )
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
@@ -96,10 +104,10 @@ def get_data_provider(dataset_params, m_type):
         elif dataset == 'clf':
             x = dp.rss.astype('float32').copy()
             groups = conn.feature_groups
-            radio_idx = groups['wifi'] + groups['ble']
+            radio_idx = groups['wifi']
             if radio_idx:
-                x[:, radio_idx] = (x[:, radio_idx] + 110.0) / 110.0
-                x[:, radio_idx] = x[:, radio_idx].clip(0.0, 1.0)
+                from clf_features import normalize_rssi
+                x[:, radio_idx] = normalize_rssi(x[:, radio_idx])
             dp.x = x
         else:
             dp = dp.standardize_data(scaling_type=d_params['scaling'])

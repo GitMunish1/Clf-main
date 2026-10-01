@@ -1,5 +1,10 @@
 ## Multi-Task Neural Network for Position Estimation in Large-Scale Indoor Environments
 
+> **CLF production extension:** branch `feature/clf-sensor-fusion` adds the
+> versioned `clf-features-v2` contract: 13 fixed Wi-Fi BSSIDs + 19 motion
+> features, fused into Multi-CEL cell classification and within-cell X/Y
+> regression. BLE is disabled for CLF V1. See `CLF_SENSOR_FUSION.md`.
+
 This repository holds the implementation of the neural network model for multi-task indoor localization (building/floor/position)
 estimation in a single forward pass, which was proposed in:
 
@@ -117,4 +122,3 @@ Please study the documented source code for details.
 [5] X. Song et al., „A Novel Convolutional Neural Network Based Indoor Localization Framework With WiFi Fingerprinting“, IEEE Access, Bd. 7, S. 110698–110709, Aug. 2019, doi: 10.1109/access.2019.2933921.
 
 [6] K. S. Kim, „Hybrid Building/Floor Classification and Location Coordinates Regression Using A Single-Input and Multi-Output Deep Neural Network for Large-Scale Indoor Localization Based on Wi-Fi Fingerprinting“, in 2018 Sixth International Symposium on Computing and Networking Workshops (CANDARW), Takayama, Nov. 2018, S. 196–201. doi: 10.1109/CANDARW.2018.00045.
- 

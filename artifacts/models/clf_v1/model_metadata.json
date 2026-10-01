@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "model_version": "clf-mcel-v1",
+  "feature_version": "clf-features-v2",
+  "wifi_features": 13,
+  "motion_features": 19,
+  "ble_enabled": false,
+  "model_input_names": ["wifi_input", "motion_input"],
+  "output_names": ["output_class", "output_reg"],
+  "decoder_min_confidence": 0.45,
+  "decoder_min_margin": 0.08,
+  "threshold_status": "initial_requires_real_validation_tuning",
+  "status": "model_not_trained"
+}

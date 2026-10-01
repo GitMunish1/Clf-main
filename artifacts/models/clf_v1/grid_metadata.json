@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "feature_version": "clf-features-v2",
+  "model_version": "clf-mcel-v1",
+  "coordinate_units": "metres",
+  "grid_size_m": 3.0,
+  "padding_ratio": 0.3,
+  "regression_scale_m": 2.4,
+  "cells": [],
+  "status": "template_waiting_for_calibrated_real_training_data"
+}

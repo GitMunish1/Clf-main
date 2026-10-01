@@ -1,5 +1,7 @@
 import numpy as np
 
+from clf_features import MotionScaler, normalize_rssi
+
 from data.mcel_data_provider import (
     MCELdataProvider,
     compute_grid_cell_origins_of_encoding,
@@ -12,26 +14,26 @@ class CLFSensorFusionDataProvider(MCELdataProvider):
     def _clf_param(self, name, default):
         return self.pr.param_dict.get(name, default)
 
-    def build_sensor_inputs(self):
+    def build_sensor_inputs(self, motion_enabled=True):
         raw = self.rss.astype(np.float32, copy=True)
         groups = self.dc.feature_groups
-        feature_names = self.dc.feature_names
         n = len(raw)
 
         wifi = self._slice_or_zero(raw, groups.get('wifi', []), n)
-        ble = self._slice_or_zero(raw, groups.get('ble', []), n)
         motion_idx = groups.get('motion', [])
         motion = self._slice_or_zero(raw, motion_idx, n)
 
         wifi = self._normalize_rssi(wifi)
-        ble = self._normalize_rssi(ble)
-        motion = self._normalize_motion(
-            motion, [feature_names[i] for i in motion_idx]
-        )
+        train_idx = self.split_indices[self.split_idx]['train']
+        if len(train_idx) == 0:
+            raise ValueError('training split cannot be empty')
+        self.motion_scaler = MotionScaler.fit(motion[train_idx])
+        motion = self.motion_scaler.transform(motion)
+        if not motion_enabled:
+            motion = np.zeros_like(motion)
 
         self.x = {
             'wifi_input': wifi.astype(np.float32),
-            'ble_input': ble.astype(np.float32),
             'motion_input': motion.astype(np.float32),
         }
         return self
@@ -44,28 +46,12 @@ class CLFSensorFusionDataProvider(MCELdataProvider):
 
     @staticmethod
     def _normalize_rssi(values):
-        result = (values + 110.0) / 110.0
-        return np.clip(result, 0.0, 1.0)
+        return np.asarray(normalize_rssi(values), dtype=np.float32)
 
-    def _normalize_motion(self, values, names):
-        result = values.astype(np.float32, copy=True)
-        if not names:
-            return result
-
-        train_idx = self.split_indices[self.split_idx]['train']
-        for col, name in enumerate(names):
-            if name in ('heading_sin', 'heading_cos'):
-                continue
-            train_values = (
-                result[train_idx, col] if len(train_idx) else result[:, col]
-            )
-            scale = max(
-                float(np.max(np.abs(train_values)))
-                if len(train_values) else 0.0,
-                1.0,
-            )
-            result[:, col] /= scale
-        return result
+    def preprocessing_artifact(self):
+        if not hasattr(self, 'motion_scaler'):
+            raise ValueError('build_sensor_inputs must run before export')
+        return self.motion_scaler.to_artifact()
 
     def get_x(self, partition='train'):
         subset = self.split_indices[self.split_idx][partition]

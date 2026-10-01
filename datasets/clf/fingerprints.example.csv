@@ -1,5 +1,2 @@
-x,y,floor,timestamp,steps,step_delta,heading_deg,distance_m,imu_accel_mean_x,imu_accel_mean_y,imu_accel_mean_z,imu_gyro_mean_z,wifi_aabbccddeeff,wifi_112233445566,ble_beacon_01,ble_beacon_02,split
-2.0,3.0,0,2026-09-20T10:00:00,0,0,90,0.0,0.10,-0.02,9.78,0.01,-45,-72,-63,-110,train
-2.8,3.0,0,2026-09-20T10:00:02,1,1,90,0.8,0.14,-0.01,9.80,0.02,-48,-69,-61,-88,train
-3.6,3.0,0,2026-09-20T10:00:04,2,1,90,1.6,0.12,0.00,9.79,0.02,-52,-65,-58,-84,val
-4.4,3.0,0,2026-09-20T10:00:06,3,1,90,2.4,0.11,0.02,9.81,0.01,-55,-63,-56,-82,test
+node_id,floor,x_m,y_m,session_id,window_id,split,wifi_0c:7b:c8:e0:6c:c3,wifi_e4:55:a8:58:99:c7,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z,linear_accel_x,linear_accel_y,linear_accel_z,magnet_x,magnet_y,magnet_z,step_delta,heading_deg
+EXAMPLE_ONLY_N01,0,0.0,0.0,example-session,example-window,train,-50,-100,0.1,0.2,9.8,0.01,0.02,0.03,0.0,0.1,0.0,0,0,0,1,90

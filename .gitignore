@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+exp/
+artifacts/models/clf_v1/*.keras

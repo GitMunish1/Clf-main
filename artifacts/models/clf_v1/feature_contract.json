@@ -1,0 +1,43 @@
+{
+  "schema_version": "2.0",
+  "feature_version": "clf-features-v2",
+  "model_version": "clf-mcel-v1",
+  "model_inputs": ["wifi_input", "motion_input"],
+  "wifi": {
+    "input_name": "wifi_input",
+    "dimensions": 13,
+    "missing_rssi_dbm": -110,
+    "clip_dbm": [-110, -20],
+    "normalization": "(clip(rssi_dbm, -110, -20) + 110) / 90",
+    "duplicate_policy": "strongest_rssi",
+    "unknown_policy": "ignore",
+    "identifier": "normalized_bssid",
+    "access_points": [
+      {"index": 0, "bssid": "0c:7b:c8:e0:6c:c3", "name": "WC-GF-DCPD_AREA", "floor": 0},
+      {"index": 1, "bssid": "0c:7b:c8:e0:6e:37", "name": "WC-GF-DCPD_DISCUSSION-RM2", "floor": 0},
+      {"index": 2, "bssid": "0c:7b:c8:e0:6c:c1", "name": "WC-GF-DCPD_BD-RM2", "floor": 0},
+      {"index": 3, "bssid": "0c:7b:c8:e0:6d:5a", "name": "WC-GF-DCPD AREA RECUITMENT ROOM", "floor": 0},
+      {"index": 4, "bssid": "0c:7b:c8:e0:6e:f6", "name": "WC-GF- DCPD AREA RECEPTION", "floor": 0},
+      {"index": 5, "bssid": "0c:7b:c8:e0:6d:0a", "name": "WC-GF-NEAR CAFETIERA", "floor": 0},
+      {"index": 6, "bssid": "e4:55:a8:58:99:c7", "name": "WC-1F-PRO VC", "floor": 1},
+      {"index": 7, "bssid": "e4:55:a8:58:9e:30", "name": "WC-1F-VC RM", "floor": 1},
+      {"index": 8, "bssid": "e4:55:a8:58:9f:21", "name": "WC-1F-CONFERENCE RM", "floor": 1},
+      {"index": 9, "bssid": "0c:7b:c8:e0:6c:d3", "name": "HWC-1F-GIRLS WARDEN", "floor": 1},
+      {"index": 10, "bssid": "0c:7b:c8:e0:6a:b3", "name": "WC-1F-CONFERENCE RM GATE", "floor": 1},
+      {"index": 11, "bssid": "0c:7b:c8:e0:6e:f4", "name": "WC-1F- CHANCELLOR OFFICE 222", "floor": 1},
+      {"index": 12, "bssid": "e4:55:a8:39:d8:6c", "name": "WC-1F-Connecting Bridge", "floor": 1}
+    ]
+  },
+  "motion": {
+    "input_name": "motion_input",
+    "dimensions": 19,
+    "ordering": ["accel_x", "accel_y", "accel_z", "accel_magnitude", "gyro_x", "gyro_y", "gyro_z", "gyro_magnitude", "linear_accel_x", "linear_accel_y", "linear_accel_z", "linear_accel_magnitude", "magnet_x", "magnet_y", "magnet_z", "magnet_magnitude", "step_delta", "heading_sin", "heading_cos"],
+    "magnitude": "sqrt(x^2 + y^2 + z^2)",
+    "heading": "radians(heading_deg % 360), then sin/cos",
+    "missing_magnetometer": [0, 0, 0],
+    "scaling": {"method": "zscore", "fit_on": "training_split_only", "zero_variance_scale": 1.0, "passthrough_indices": [17, 18], "artifact": "preprocessing.json"}
+  },
+  "ble": {"enabled": false, "required": false, "model_input": null},
+  "coordinates": {"units": "metres", "fields": ["x_m", "y_m", "floor", "node_id"], "calibration_required": true, "artifact": "coordinate_calibration.json"},
+  "compatibility": {"required_feature_version": "clf-features-v2", "required_model_version": "clf-mcel-v1", "wifi_features": 13, "motion_features": 19, "ble_enabled": false}
+}

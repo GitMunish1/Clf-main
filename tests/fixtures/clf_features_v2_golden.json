@@ -1,0 +1,31 @@
+{
+  "preprocessing": {
+    "feature_version": "clf-features-v2",
+    "motion": {
+      "method": "zscore",
+      "fit_on": "training_split_only",
+      "fitted": true,
+      "mean": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+      "scale": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1],
+      "passthrough_indices": [17, 18]
+    }
+  },
+  "observation": {
+    "wifi": [
+      {"bssid": "0C-7B-C8-E0-6C-C3", "rssi_dbm": -55},
+      {"bssid": "0c:7b:c8:e0:6c:c3", "rssi_dbm": -42},
+      {"bssid": "0c7bc8e06e37", "rssi_dbm": -90},
+      {"bssid": "aa:bb:cc:dd:ee:ff", "rssi_dbm": -20}
+    ],
+    "accelerometer": {"x": 1, "y": 2, "z": 2},
+    "gyroscope": {"x": 0.1, "y": -0.2, "z": 0.3},
+    "linear_acceleration": {"x": 0.4, "y": 0, "z": -0.4},
+    "magnetometer": null,
+    "step_delta": 3,
+    "heading_deg": 450
+  },
+  "expected": {
+    "wifi_input": [0.7555555701255798, 0.2222222238779068, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "motion_input": [0, 0.5, 0.5, 1, -0.44999998807907104, -0.6000000238418579, -0.3499999940395355, -0.3129171133041382, -0.30000001192092896, -0.5, -0.699999988079071, -0.2171572744846344, -0.5, -0.5, -0.5, -0.5, 1, 1, 6.123234262925839e-17]
+  }
+}
