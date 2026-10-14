@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "units": "metres",
+  "calibrated": false,
+  "source_coordinate_system": null,
+  "transform": null,
+  "map_to_local_m": null,
+  "measurement_method": null,
+  "status": "required_before_training_no_scale_has_been_invented"
+}
