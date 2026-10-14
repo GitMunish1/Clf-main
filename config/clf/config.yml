@@ -5,7 +5,7 @@ data:
   params:
     csv_path: datasets/clf/fingerprints.csv
     feature_contract_path: artifacts/contracts/feature_contract.json
-    coordinate_calibration_path: artifacts/models/clf_v1/coordinate_calibration.json
+    coordinate_calibration_path: artifacts/models/clf_v2/coordinate_calibration.json
     require_calibrated_coordinates: true
     split_seed: 1234
     val: 0.15
