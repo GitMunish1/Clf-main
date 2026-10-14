@@ -1,0 +1,23 @@
+name: Verify CLF 24 AP model contract
+on:
+  push:
+    branches: [feature/clf-24-ap-model-v2]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: clf-24-ap-model-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: python -m pip install numpy pandas scipy scikit-learn shapely pyyaml matplotlib pytest
+      - name: Run CLF sensor fusion and package tests
+        run: python -m pytest -q tests/test_clf_sensor_fusion_contract.py tests/test_clf_export_evaluation.py
