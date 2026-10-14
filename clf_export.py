@@ -80,6 +80,16 @@ def export_model_package(model, data_provider, output_dir, calibration_path, con
     expected_inputs = [tensor.name.split(":")[0] for tensor in model.inputs]
     if expected_inputs != contract["model_inputs"]:
         raise ValueError(f"model input mismatch: expected {contract['model_inputs']}, got {expected_inputs}")
+    # Prevent packaging an old 13-input Keras graph under the new v3 metadata.
+    for tensor in model.inputs:
+        shape = getattr(tensor, "shape", None)
+        if shape is None:
+            continue  # Minimal named-input test doubles have no shape.
+        name = tensor.name.split(":")[0]
+        width = {"wifi_input": WIFI_DIM, "motion_input": MOTION_DIM}[name]
+        if not shape or shape[-1] is None or int(shape[-1]) != width:
+            raise ValueError(f"trained {name} width must be {width} (got {shape})")
+
 
     output.mkdir(parents=True, exist_ok=True)
     model.save(output / "clf_localization.keras")
