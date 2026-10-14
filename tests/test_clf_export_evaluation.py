@@ -53,7 +53,7 @@ def test_complete_model_package_export(tmp_path):
     }))
     output = tmp_path / "package"
     metadata = export_model_package(DummyModel(), DummyProvider(), output, calibration)
-    assert metadata["wifi_features"] == 13 and metadata["motion_features"] == 19
+    assert metadata["wifi_features"] == 24 and metadata["motion_features"] == 19
     assert metadata["ble_enabled"] is False
     assert {item.name for item in output.iterdir()} == {
         "clf_localization.keras", "feature_contract.json", "access_points.json",
@@ -85,7 +85,7 @@ def test_real_validation_metric_contract_and_motion_ablation():
         "p95_position_error_m": 0.0, "confidence_acceptance_rate": 0.5,
         "low_confidence_rejection_rate": 0.5, "mean_inference_latency_ms": 3.0,
     }
-    inputs = {"wifi_input": np.ones((2, 13)), "motion_input": np.ones((2, 19))}
+    inputs = {"wifi_input": np.ones((2, 24)), "motion_input": np.ones((2, 19))}
     variants = ablation_inputs(inputs)
     assert np.all(variants["wifi_only"]["motion_input"] == 0)
     assert np.all(variants["wifi_plus_motion"]["motion_input"] == 1)
