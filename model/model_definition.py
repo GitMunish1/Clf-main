@@ -95,8 +95,8 @@ def _build_sensor_fusion_backbone(conf, input_dim):
 
     modalities = tuple(conf.get('modalities', ('wifi', 'ble', 'motion')))
     if modalities == ('wifi', 'motion'):
-        if input_dim.get('wifi_input') != 13 or input_dim.get('motion_input') != 19:
-            raise ValueError('CLF V1 requires wifi_input=13 and motion_input=19')
+        if input_dim.get('wifi_input') != 24 or input_dim.get('motion_input') != 19:
+            raise ValueError('CLF 24-AP v2 requires wifi_input=24 and motion_input=19')
     for modality in modalities:
         input_name = '{}_input'.format(modality)
         if input_name not in input_dim:
