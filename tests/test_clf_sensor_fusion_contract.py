@@ -62,9 +62,9 @@ class CLFSensorFusionContractTest(unittest.TestCase):
         return handle.name
 
     def test_fixed_ap_order_normalization_and_duplicates(self):
-        self.assertEqual(len(ordered_bssids(self.contract)), 13)
+        self.assertEqual(len(ordered_bssids(self.contract)), 24)
         self.assertEqual(ordered_bssids(self.contract)[0], "0c:7b:c8:e0:6c:c3")
-        self.assertEqual(ordered_bssids(self.contract)[-1], "e4:55:a8:39:d8:6c")
+        self.assertEqual(ordered_bssids(self.contract)[12], "e4:55:a8:39:d8:6c")
         self.assertEqual(normalize_bssid("0C-7B-C8-E0-6C-C3"), "0c:7b:c8:e0:6c:c3")
         self.assertAlmostEqual(normalize_rssi(-110), 0.0)
         self.assertAlmostEqual(normalize_rssi(-90), 20 / 90)
@@ -84,7 +84,7 @@ class CLFSensorFusionContractTest(unittest.TestCase):
         train = provider.split_indices[0]["train"]
         provider.build_sensor_inputs()
         self.assertEqual(set(provider.x), {"wifi_input", "motion_input"})
-        self.assertEqual(provider.x["wifi_input"].shape, (30, 13))
+        self.assertEqual(provider.x["wifi_input"].shape, (30, 24))
         self.assertEqual(provider.x["motion_input"].shape, (30, 19))
         self.assertTrue(np.isfinite(provider.x["motion_input"]).all())
         np.testing.assert_allclose(provider.motion_scaler.mean[:17], np.mean(raw_motion[train, :17], axis=0))
@@ -99,7 +99,7 @@ class CLFSensorFusionContractTest(unittest.TestCase):
         self.assertAlmostEqual(zero[18], 1.0)
 
     def test_golden_training_preprocessing(self):
-        fixture = json.loads((Path(__file__).parent / "fixtures/clf_features_v2_golden.json").read_text())
+        fixture = json.loads((Path(__file__).parent / "fixtures/clf_features_v3_golden.json").read_text())
         scaler = MotionScaler.from_artifact(fixture["preprocessing"])
         actual = preprocess_observation(fixture["observation"], self.contract, scaler)
         np.testing.assert_allclose(actual["wifi_input"], fixture["expected"]["wifi_input"], atol=1e-7)
