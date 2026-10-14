@@ -15,10 +15,10 @@ from typing import Iterable, Mapping, Sequence
 import numpy as np
 
 
-FEATURE_VERSION = "clf-features-v2"
+FEATURE_VERSION = "clf-features-v3"
 WIFI_INPUT_NAME = "wifi_input"
 MOTION_INPUT_NAME = "motion_input"
-WIFI_DIM = 13
+WIFI_DIM = 24
 MOTION_DIM = 19
 MOTION_NAMES = (
     "accel_x", "accel_y", "accel_z", "accel_magnitude",
@@ -49,14 +49,14 @@ def validate_feature_contract(contract: Mapping) -> None:
     wifi = contract.get("wifi", {})
     ordered = wifi.get("access_points", [])
     if wifi.get("dimensions") != WIFI_DIM or len(ordered) != WIFI_DIM:
-        raise ValueError("clf-features-v2 requires exactly 13 Wi-Fi features")
+        raise ValueError("clf-features-v3 requires exactly 24 Wi-Fi features")
     indexes = [item.get("index") for item in ordered]
     bssids = [normalize_bssid(item.get("bssid", "")) for item in ordered]
     if indexes != list(range(WIFI_DIM)) or "" in bssids or len(set(bssids)) != WIFI_DIM:
         raise ValueError("Wi-Fi registry indexes/BSSIDs are invalid or non-unique")
     motion = contract.get("motion", {})
     if motion.get("dimensions") != MOTION_DIM or tuple(motion.get("ordering", [])) != MOTION_NAMES:
-        raise ValueError("clf-features-v2 motion order must match the canonical 19-value order")
+        raise ValueError("clf-features-v3 motion order must match the canonical 19-value order")
     if contract.get("ble", {}).get("enabled") is not False:
         raise ValueError("BLE must be disabled for CLF V1")
     if contract.get("model_inputs") != [WIFI_INPUT_NAME, MOTION_INPUT_NAME]:
