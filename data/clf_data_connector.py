@@ -1,7 +1,7 @@
 """CLF V1 real-survey dataset connector.
 
 Rows represent node-labelled observations/windows. Wi-Fi is always expanded to
-the fixed 13-BSSID registry, motion is always the canonical 19-value vector, and
+the fixed 24-position Wi-Fi registry, motion is always the canonical 19-value vector, and
 survey sessions—not adjacent rows—define train/validation/test boundaries.
 """
 from __future__ import annotations
@@ -14,6 +14,7 @@ import pandas as pd
 
 from clf_features import (
     MOTION_NAMES,
+    WIFI_DIM,
     build_motion_vector,
     load_feature_contract,
     normalize_bssid,
@@ -28,7 +29,7 @@ class CLFDataConnector(DatasetConnector):
         self,
         csv_path="datasets/clf/fingerprints.csv",
         feature_contract_path="artifacts/contracts/feature_contract.json",
-        coordinate_calibration_path="artifacts/models/clf_v1/coordinate_calibration.json",
+        coordinate_calibration_path="artifacts/models/clf_v2/coordinate_calibration.json",
         missing_rssi=-110.0,
         require_calibrated_coordinates=True,
         split_seed=1234,
@@ -173,8 +174,8 @@ class CLFDataConnector(DatasetConnector):
         wifi_names = [f"wifi_{bssid}" for bssid in ordered_bssids(self.contract)]
         self.feature_names = wifi_names + list(MOTION_NAMES)
         self.feature_groups = {
-            "wifi": list(range(13)),
-            "motion": list(range(13, 32)),
+            "wifi": list(range(WIFI_DIM)),
+            "motion": list(range(WIFI_DIM, WIFI_DIM + len(MOTION_NAMES))),
             "ble": [],
         }
         self.rss = np.concatenate([wifi, motion], axis=1).astype(np.float32)
