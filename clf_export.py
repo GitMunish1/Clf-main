@@ -11,7 +11,7 @@ from clf_features import FEATURE_VERSION, MOTION_DIM, WIFI_DIM, load_feature_con
 from data.mcel_data_provider import compute_grid_cell_origins_of_encoding
 
 
-MODEL_VERSION = "clf-mcel-v1"
+MODEL_VERSION = "clf-mcel-v2"
 
 
 def _read_ready_calibration(path: Path) -> dict:
