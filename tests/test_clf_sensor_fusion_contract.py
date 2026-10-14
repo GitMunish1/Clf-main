@@ -89,6 +89,22 @@ class CLFSensorFusionContractTest(unittest.TestCase):
         self.assertTrue(np.isfinite(provider.x["motion_input"]).all())
         np.testing.assert_allclose(provider.motion_scaler.mean[:17], np.mean(raw_motion[train, :17], axis=0))
 
+    def test_new_ground_floor_ap_at_index_13_uses_only_actual_scans(self):
+        ap = self.contract["wifi"]["access_points"][13]
+        self.assertEqual(ap["index"], 13)
+        self.assertEqual(ap["floor"], 0)
+        self.assertEqual(ap["identity_status"], "hardware_mac_exact_match_candidate")
+        absent = build_wifi_vector([], self.contract)
+        self.assertEqual(absent.shape, (24,))
+        self.assertEqual(float(absent[13]), 0.0)
+        seen = build_wifi_vector([
+            {"bssid": ap["bssid"], "rssi_dbm": -81},
+            {"bssid": ap["bssid"].upper(), "rssi_dbm": -49},
+            {"bssid": "aa:bb:cc:dd:ee:ff", "rssi_dbm": -20},
+        ], self.contract)
+        self.assertAlmostEqual(float(seen[13]), 61 / 90, places=6)
+        self.assertTrue(np.all(np.delete(seen, 13) == 0.0))
+
     def test_motion_order_heading_wrap_and_missing_magnetometer(self):
         zero = build_motion_vector({"heading_deg": 0})
         wrapped = build_motion_vector({"heading_deg": 360})
