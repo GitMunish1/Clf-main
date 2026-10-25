@@ -154,14 +154,21 @@ class BaseDataProvider:
         return self
 
     def standardize_data(self, scaling_type='min_max'):
+        if scaling_type == 'clf_fixed_rssi':
+            self.x = (np.clip(np.asarray(self.rss, dtype=np.float32), -110, -20) + 110) / 90
+            return self
         if scaling_type == 'powed':
             return self.normalize_powed()
-        elif scaling_type == 'standardize':
+        elif scaling_type in ('standard', 'standardize'):
             scaler = StandardScaler()
-            self.x = scaler.fit_transform(self.rss)
+            scaler.fit(self.rss[self.split_indices[self.split_idx]['train']])
+            self.x = scaler.transform(self.rss)
         elif scaling_type == 'min_max':
-            min_ap_val = np.min(self.rss)
-            max_ap_val = np.max(self.rss)
+            train = self.rss[self.split_indices[self.split_idx]['train']]
+            min_ap_val = np.min(train)
+            max_ap_val = np.max(train)
+            if max_ap_val == min_ap_val:
+                raise ValueError('training RSSI range must be nonzero')
             self.x = (self.rss - min_ap_val) / (max_ap_val - min_ap_val)
         else:
             raise NotImplementedError('Specified scaling type: {} is not implemented'.format(scaling_type))
@@ -170,7 +177,7 @@ class BaseDataProvider:
 
     def normalize_powed(self, b=2.71828):
         arr = self.rss
-        res = np.copy(arr).astype(np.float)
+        res = np.copy(arr).astype(float)
 
         zero_mask = np.logical_or(res > 50, res < -95)
         one_mask = res >= 0
@@ -238,3 +245,4 @@ class BaseDataProvider:
             return None
 
         return dp
+

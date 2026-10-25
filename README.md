@@ -1,3 +1,5 @@
+> **CLF adaptation:** see [the verified 24-AP single-input profile and backend plan](docs/CLF_ADAPTATION.md). This development branch preserves authentic mCEL; no training or field-accuracy claim is included.
+
 ## Multi-Task Neural Network for Position Estimation in Large-Scale Indoor Environments
 
 This repository holds the implementation of the neural network model for multi-task indoor localization (building/floor/position)

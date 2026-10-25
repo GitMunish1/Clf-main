@@ -30,10 +30,11 @@ class RegModel(BaseModel):
 
     def evaluate_model(self, load_weights=True, compute_error_vec=False):
         if load_weights:
-            self.model.load_weights(self.base_dir + self.model_name + ".hdf5")
+            self.model.load_weights(self.weights_path(for_loading=True))
 
         y_pred = self.model.predict(self.dp.get_x('test'))
 
         metrics, polys, floor_pred = self.dp.calc_performance(y_pred, compute_error_vec=compute_error_vec)
 
         return metrics, polys, floor_pred
+

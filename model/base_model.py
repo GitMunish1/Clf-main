@@ -1,3 +1,4 @@
+from pathlib import Path
 import tensorflow as tf
 
 from data.base_data_provider import BaseDataProvider
@@ -13,12 +14,19 @@ class BaseModel:
         self.dp: BaseDataProvider = data_provider
         self.model_name = model_name
 
+    def weights_path(self, for_loading=False):
+        current = Path(self.base_dir) / (self.model_name + ".weights.h5")
+        legacy = Path(self.base_dir) / (self.model_name + ".hdf5")
+        if for_loading and not current.exists() and legacy.exists():
+            return str(legacy)
+        return str(current)
+
     def fit_model(self):
         model = self.model
         dp = self.dp
         pr = self.pr
 
-        ckpt_file = self.base_dir + self.model_name + ".hdf5"
+        ckpt_file = self.weights_path()
 
         checkpoint = tf.keras.callbacks.ModelCheckpoint(
             ckpt_file, monitor='val_loss',
@@ -35,3 +43,4 @@ class BaseModel:
                   epochs=pr.get_param('epochs'),
                   callbacks=[checkpoint, stop_early],
                   verbose=pr.get_param('verbose'))
+

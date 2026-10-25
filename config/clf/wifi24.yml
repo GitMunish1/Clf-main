@@ -1,0 +1,20 @@
+# Untrained CLF profile. Uses the authentic mCEL builder and overlapping labels.
+name: clf_mcel_wifi24
+type: mCEL
+backbone:
+  type: MLP
+  layers: [512]
+  activation: relu
+  dropout: 0.5
+head:
+  classification:
+    layers: [512]
+    activation: relu
+    dropout: 0.25
+  regression:
+    layers: [512]
+    activation: relu
+    dropout: 0.25
+params:
+  lr: 0.001
+  pretrained: false

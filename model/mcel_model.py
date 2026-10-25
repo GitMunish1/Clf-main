@@ -33,7 +33,7 @@ class MCELmodel(BaseModel):
 
     def evaluate_model(self, load_weights=True, compute_error_vec=False):
         if load_weights:
-            self.model.load_weights(self.base_dir + self.model_name + ".hdf5")
+            self.model.load_weights(self.weights_path(for_loading=True))
 
         y_pred_grid, y_pred_box = self.model.predict(self.dp.get_x('test'))
 
@@ -65,3 +65,4 @@ def get_mcel_loss(num_grid_cells):
         return loss
 
     return multi_loss
+

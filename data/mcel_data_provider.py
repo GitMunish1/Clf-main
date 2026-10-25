@@ -140,18 +140,18 @@ class MCELdataProvider(BaseDataProvider):
                 multi_labels[idx, int(labels[idx, 2]), 2] = 1.0
                 multi_grid_cell_labels[idx, int(labels[idx, 2])] = 1.0
 
-            # inverse &normalize and inverse
-            multi_labels[idx, np.array(indices), 2] = 1.0 / multi_labels[idx, np.array(indices), 2]
-            d_sum = np.sum(multi_labels[idx, np.array(indices), 2])
-            multi_labels[idx, np.array(indices), 2] /= d_sum
-
-            if not weighted_grid_labels:
-                multi_labels[idx, np.array(indices), 2] = 1
-
-            multi_grid_cell_labels[idx, np.array(indices)] = 1.0 / multi_grid_cell_labels[
-                idx, np.array(indices)]
-            d_sum = np.sum(multi_grid_cell_labels[idx, np.array(indices)])
-            multi_grid_cell_labels[idx, np.array(indices)] /= d_sum
+            # Normalize inverse squared distances without division by zero at
+            # an exact cell centre (possible with wide overlapping padding).
+            selected = np.array(indices)
+            distances = multi_grid_cell_labels[idx, selected]
+            zero = distances == 0.0
+            if np.any(zero):
+                weights = zero.astype(float) / zero.sum()
+            else:
+                inverse = distances.min() / distances
+                weights = inverse / inverse.sum()
+            multi_grid_cell_labels[idx, selected] = weights
+            multi_labels[idx, selected, 2] = weights if weighted_grid_labels else 1.0
 
         # reshape labels
         multi_labels = np.reshape(multi_labels,
@@ -387,3 +387,4 @@ def compute_grid_cell_origins_of_encoding(width, height, grid_size):
         origins.append(np.array([x, y]))
 
     return np.array(origins), num
+

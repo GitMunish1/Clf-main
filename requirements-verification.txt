@@ -1,0 +1,7 @@
+tensorflow-cpu==2.20.0
+keras==3.15.1
+numpy==2.2.1
+pandas
+scikit-learn
+pyyaml
+pytest==8.3.4

@@ -1,9 +1,14 @@
+from numbers import Integral
 import tensorflow as tf
 
 
 def get_model_from_yaml_definition(conf, input_dim, output_dim):
 
-    input = tf.keras.layers.Input(shape=input_dim, name='input')
+    # Keras 3 requires an iterable shape; the provider returns a scalar width.
+    input_shape = (int(input_dim),) if isinstance(input_dim, Integral) else tuple(input_dim)
+    if len(input_shape) != 1 or input_shape[0] <= 0:
+        raise ValueError('mCEL requires one positive feature width')
+    input = tf.keras.layers.Input(shape=input_shape, name='input')
     bb = input
 
     # generate input based on backbone type
@@ -72,3 +77,4 @@ def get_model_from_yaml_definition(conf, input_dim, output_dim):
         model = tf.keras.models.Model(input, output)
 
     return model
+
